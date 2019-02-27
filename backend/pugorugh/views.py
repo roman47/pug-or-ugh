@@ -11,6 +11,7 @@ from rest_framework.generics import (CreateAPIView, RetrieveUpdateAPIView
 ,RetrieveUpdateDestroyAPIView, ListCreateAPIView)
 from django.contrib.auth.models import User
 
+from django.db.models import Case, When
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -71,57 +72,96 @@ class UserPreferences(mixins.CreateModelMixin, RetrieveUpdateAPIView):
                 # return a 404 response.
                 raise
 
+
+def get_age_range(user_pref_age):
+    b_lower_age_limit = 1000
+    y_lower_age_limit = 1000
+    a_lower_age_limit = 1000
+    s_lower_age_limit = 1000
+    b_upper_age_limit = 0
+    y_upper_age_limit = 0
+    a_upper_age_limit = 0
+    s_upper_age_limit = 0
+    if 'b' in user_pref_age:
+        b_lower_age_limit = 0
+        b_upper_age_limit = 10
+    if 'y' in user_pref_age:
+        y_lower_age_limit = 11
+        y_upper_age_limit = 20
+    if 'a' in user_pref_age:
+        a_lower_age_limit = 21
+        a_upper_age_limit = 40
+    if 's' in user_pref_age:
+        s_lower_age_limit = 41
+        s_upper_age_limit = 1000
+
+    return (min(b_lower_age_limit, y_lower_age_limit,
+                a_lower_age_limit, s_lower_age_limit), max(
+                b_upper_age_limit, y_upper_age_limit, a_upper_age_limit,
+                s_upper_age_limit))
+
 class UndecidedNext(APIView):
     def get(self, request, pk, *args, **kwargs):
+        # get userPrefs
+        userPref = models.UserPref.objects.get(id=request.user.id)
+        # get all the dogs based on UserPref
+        dogsAll = models.Dog.objects.exclude(userdog__status__in='l,d')\
+            .filter(gender__in=userPref.gender)\
+            .filter(size__in=userPref.size)\
+            .filter(age__range=get_age_range(userPref.age))
+        # import pdb;
+        # pdb.set_trace()
         # if there are no undecided dogs, return a 404
-        dogs = models.Dog.objects.exclude(userdog__status__in='l,d')
-        if not dogs:
+        if not dogsAll:
             return HttpResponseNotFound('<h1>No Page Here</h1>')
-        dogs = models.Dog.objects.exclude(userdog__status__in='l,d')\
-            .filter(id__gt=pk).first()
+        dogs = dogsAll.filter(id__gt=pk).first()
         #loop back to the beginning if you hit the last dog
         if not dogs:
-            dogs = models.Dog.objects.exclude(userdog__status__in='l,d') \
-                .first()
+            dogs = dogsAll.first()
         serializer = serializers.DogSerializer(dogs)
-        #import pdb;
-        #pdb.set_trace()
         return Response(serializer.data)
-
 
 class LikedNext(APIView):
     def get(self, request, pk, *args, **kwargs):
+        # get userPrefs
+        userPref = models.UserPref.objects.get(id=request.user.id)
+        # get all the dogs based on UserPref
+        dogsAll = models.Dog.objects.filter(userdog__status__in='l')\
+            .filter(gender__in=userPref.gender)\
+            .filter(size__in=userPref.size)\
+            .filter(age__range=get_age_range(userPref.age))
         # import pdb;
         # pdb.set_trace()
-        # if there are no liked dogs, return a 404
-        dogs = models.Dog.objects.filter(userdog__status__in='l')
-        if not dogs:
+        # if there are no undecided dogs, return a 404
+        if not dogsAll:
             return HttpResponseNotFound('<h1>No Page Here</h1>')
-        dogs = models.Dog.objects.filter(userdog__status__in='l')\
-            .filter(id__gt=pk).first()
+        dogs = dogsAll.filter(id__gt=pk).first()
         # loop back to the beginning if you hit the last dog
         if not dogs:
-            dogs = models.Dog.objects.filter(userdog__status__in='l') \
-                .first()
+            dogs = dogsAll.first()
         serializer = serializers.DogSerializer(dogs)
         return Response(serializer.data)
 
 
 class DislikedNext(ListCreateAPIView):
     def get(self, request, pk, *args, **kwargs):
-        # if there are no disliked dogs, return a 404
-        dogs = models.Dog.objects.filter(userdog__status__in='d')
-        if not dogs:
+        # get userPrefs
+        userPref = models.UserPref.objects.get(id=request.user.id)
+        # get all the dogs based on UserPref
+        dogsAll = models.Dog.objects.filter(userdog__status__in='d')\
+            .filter(gender__in=userPref.gender)\
+            .filter(size__in=userPref.size)\
+            .filter(age__range=get_age_range(userPref.age))
+        # import pdb;
+        # pdb.set_trace()
+        # if there are no undecided dogs, return a 404
+        if not dogsAll:
             return HttpResponseNotFound('<h1>No Page Here</h1>')
-        dogs = models.Dog.objects.filter(userdog__status__in='d')\
-            .filter(id__gt=pk).first()
+        dogs = dogsAll.filter(id__gt=pk).first()
         # loop back to the beginning if you hit the last dog
         if not dogs:
-            dogs = models.Dog.objects.filter(userdog__status__in='d') \
-                .first()
+            dogs = dogsAll.first()
         serializer = serializers.DogSerializer(dogs)
-        #import pdb;
-        #pdb.set_trace()
         return Response(serializer.data)
 
 
