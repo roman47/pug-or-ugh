@@ -1,17 +1,13 @@
 from django.contrib.auth import get_user_model
-from rest_framework import generics
 from rest_framework import mixins
-from rest_framework import viewsets
 from django.http import Http404
 from django.http import HttpResponseNotFound
 from rest_framework import status
 from rest_framework import permissions
 from rest_framework.request import clone_request
 from rest_framework.generics import (CreateAPIView, RetrieveUpdateAPIView
-,RetrieveUpdateDestroyAPIView, ListCreateAPIView)
-from django.contrib.auth.models import User
+, ListCreateAPIView)
 
-from django.db.models import Case, When
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -47,14 +43,14 @@ class UserPreferences(mixins.CreateModelMixin, RetrieveUpdateAPIView):
         serializer.is_valid(raise_exception=True)
 
         if instance is None:
-            #import pdb;
-            #pdb.set_trace()
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED,
                             headers=headers)
 
         self.perform_update(serializer)
+        #import pdb;
+        #pdb.set_trace()
         return Response(serializer.data)
 
     def get_object_or_none(self):
@@ -103,14 +99,14 @@ def get_age_range(user_pref_age):
 class UndecidedNext(APIView):
     def get(self, request, pk, *args, **kwargs):
         # get userPrefs
-        userPref = models.UserPref.objects.get(id=request.user.id)
+        #import pdb;
+        #pdb.set_trace()
+        userPref = models.UserPref.objects.get(user__id=request.user.id)
         # get all the dogs based on UserPref
-        dogsAll = models.Dog.objects.exclude(userdog__status__in='l,d')\
+        dogsAll = models.Dog.objects.exclude(userdog__status__in=('l','d'))\
             .filter(gender__in=userPref.gender)\
             .filter(size__in=userPref.size)\
             .filter(age__range=get_age_range(userPref.age))
-        # import pdb;
-        # pdb.set_trace()
         # if there are no undecided dogs, return a 404
         if not dogsAll:
             return HttpResponseNotFound('<h1>No Page Here</h1>')
@@ -124,7 +120,7 @@ class UndecidedNext(APIView):
 class LikedNext(APIView):
     def get(self, request, pk, *args, **kwargs):
         # get userPrefs
-        userPref = models.UserPref.objects.get(id=request.user.id)
+        userPref = models.UserPref.objects.get(user__id=request.user.id)
         # get all the dogs based on UserPref
         dogsAll = models.Dog.objects.filter(userdog__status__in='l')\
             .filter(gender__in=userPref.gender)\
@@ -146,7 +142,7 @@ class LikedNext(APIView):
 class DislikedNext(ListCreateAPIView):
     def get(self, request, pk, *args, **kwargs):
         # get userPrefs
-        userPref = models.UserPref.objects.get(id=request.user.id)
+        userPref = models.UserPref.objects.get(user__id=request.user.id)
         # get all the dogs based on UserPref
         dogsAll = models.Dog.objects.filter(userdog__status__in='d')\
             .filter(gender__in=userPref.gender)\
