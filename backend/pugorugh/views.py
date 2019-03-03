@@ -7,6 +7,7 @@ from rest_framework import permissions
 from rest_framework.request import clone_request
 from rest_framework.generics import (CreateAPIView, RetrieveUpdateAPIView
 , ListCreateAPIView)
+from django.db.models import Q
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -103,7 +104,10 @@ class UndecidedNext(APIView):
         #pdb.set_trace()
         userPref = models.UserPref.objects.get(user__id=request.user.id)
         # get all the dogs based on UserPref
-        dogsAll = models.Dog.objects.exclude(userdog__status__in=('l','d'))\
+        dogsAll = models.Dog.objects.exclude(
+                Q(userdog__status__in=('l','d')) &
+                Q(userdog__user__id=request.user.id)
+        )\
             .filter(gender__in=userPref.gender)\
             .filter(size__in=userPref.size)\
             .filter(age__range=get_age_range(userPref.age))
@@ -123,6 +127,7 @@ class LikedNext(APIView):
         userPref = models.UserPref.objects.get(user__id=request.user.id)
         # get all the dogs based on UserPref
         dogsAll = models.Dog.objects.filter(userdog__status__in='l')\
+            .filter(userdog__user__id=request.user.id)\
             .filter(gender__in=userPref.gender)\
             .filter(size__in=userPref.size)\
             .filter(age__range=get_age_range(userPref.age))
@@ -145,6 +150,7 @@ class DislikedNext(ListCreateAPIView):
         userPref = models.UserPref.objects.get(user__id=request.user.id)
         # get all the dogs based on UserPref
         dogsAll = models.Dog.objects.filter(userdog__status__in='d')\
+            .filter(userdog__user__id=request.user.id)\
             .filter(gender__in=userPref.gender)\
             .filter(size__in=userPref.size)\
             .filter(age__range=get_age_range(userPref.age))
